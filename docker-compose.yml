@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sql-analytics-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./databases/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-analytics_user} -d ${POSTGRES_DB:-analytics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  python_etl:
+    build:
+      context: .
+      dockerfile: docker/python/Dockerfile
+    container_name: sql-analytics-python-etl
+    working_dir: /workspace/scripts/etl
+    volumes:
+      - ./scripts/etl:/workspace/scripts/etl:rw
+      - ./sql_queries:/workspace/sql_queries:ro
+      - ./data:/workspace/data:rw
+    env_file:
+      - .env
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-analytics}
+      PGUSER: ${POSTGRES_USER:-analytics_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-analytics_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sleep infinity

@@ -1,0 +1,6 @@
+services:
+  python_etl:
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:cached
+    command: sleep infinity
