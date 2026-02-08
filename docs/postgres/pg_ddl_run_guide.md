@@ -13,7 +13,7 @@ docker compose up -d postgres
 ## 2) Run the DDL script
 
 ```bash
-docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/ddl/create_nppes_tables.sql
+docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/ddl/pg_create_nppes_tables.sql
 ```
 
 ## 3) Verify tables were created

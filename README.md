@@ -1,12 +1,13 @@
-# SQL Analytics Practice (PostgreSQL + Docker)
+# SQL Analytics Practice (PostgreSQL + ClickHouse + Docker)
 
-This project is for practicing SQL queries for analytics and writing performant queries using PostgreSQL running in Docker.
+This project is for practicing SQL queries for analytics and writing performant queries using PostgreSQL and ClickHouse running in Docker.
 
 ## Project structure
 
-- `docker-compose.yml`: Local stack with PostgreSQL + Python environment.
+- `docker-compose.yml`: Local stack with PostgreSQL + ClickHouse + Python environment.
 - `.env`: Local environment values used by Docker Compose.
 - `databases/postgres/`: Persistent PostgreSQL data directory.
+- `databases/clickhouse/`: Persistent ClickHouse data directory.
 - `docker/python/`: Python Docker image for data loading scripts.
 - `sql_queries/ddl/`: SQL schema setup scripts.
 - `sql_queries/dql/`: Query practice scripts.
@@ -37,6 +38,8 @@ POSTGRES_DB=analytics
 POSTGRES_USER=analytics_user
 POSTGRES_PASSWORD=analytics_password
 POSTGRES_PORT=5432
+CLICKHOUSE_HTTP_PORT=8123
+CLICKHOUSE_NATIVE_PORT=9000
 ```
 
 You can change values as needed.
@@ -61,24 +64,30 @@ You can change values as needed.
    psql -h localhost -p 5432 -U analytics_user -d analytics
    ```
 
-4. Stop services:
+4. Connect with ClickHouse client (if installed):
+
+   ```bash
+   clickhouse-client --host localhost --port 9000 --query "SELECT version()"
+   ```
+
+5. Stop services:
 
    ```bash
    docker compose down
    ```
 
-## Python service for loading data
+## Data
 
-The `python_etl` service includes `pandas`, `psycopg` (PostgreSQL driver), and `SQLAlchemy`.
+This repository uses real-world National Provider Identifier (NPI) data from the CMS NPPES monthly dissemination files.
 
-1. Open a shell in the Python container:
+- Source: CMS NPPES monthly ZIP files at `https://download.cms.gov/nppes/`
+- Monthly file pattern: `NPPES_Data_Dissemination_<Month>_<Year>.zip`
+- Example: `https://download.cms.gov/nppes/NPPES_Data_Dissemination_January_2026.zip`
 
-   ```bash
-   docker compose exec python_etl bash
-   ```
+Data is requested by running the Python download script in the `python_etl` container:
 
-2. Run a script from your repo (example):
+```bash
+docker compose run --rm python_etl python download_nppes.py
+```
 
-   ```bash
-   docker compose exec python_etl python load_data.py
-   ```
+The downloaded archives and extracted files are stored under `data/NPI_Files/` and then used for loading into staging/bronze tables.

@@ -15,7 +15,7 @@ This folder contains `download_nppes.py`, which downloads the NPPES monthly ZIP 
 
 ## Why this prepares data for DML
 
-`sql_queries/dml/load_nppes_staging.sql` scans `/data/NPI_Files` for the newest folder matching:
+`sql_queries/dml/pg_load_nppes_staging.sql` scans `/data/NPI_Files` for the newest folder matching:
 
 - `NPPES_Data_Dissemination_*`
 
@@ -59,5 +59,5 @@ python scripts/etl/download_nppes.py
 2. Load extracted CSVs into staging tables:
 
 ```bash
-docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/dml/load_nppes_staging.sql
+docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/dml/pg_load_nppes_staging.sql
 ```

@@ -1,0 +1,3 @@
+-- ClickHouse DDL placeholder.
+-- Naming convention: ClickHouse scripts are prefixed with ch_.
+-- Implement ClickHouse table definitions here for NPPES benchmarking.

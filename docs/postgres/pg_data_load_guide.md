@@ -13,7 +13,7 @@ docker compose up -d postgres
 ## 2) Run the staging load script
 
 ```bash
-docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/dml/load_nppes_staging.sql
+docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/dml/pg_load_nppes_staging.sql
 ```
 
 What this script does:

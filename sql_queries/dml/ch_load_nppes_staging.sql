@@ -1,0 +1,3 @@
+-- ClickHouse DML placeholder.
+-- Naming convention: ClickHouse scripts are prefixed with ch_.
+-- Implement ClickHouse load statements here for NPPES benchmarking.
