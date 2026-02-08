@@ -31,3 +31,6 @@ Thumbs.db
 # Docker / local database state
 databases/postgres/**
 !databases/postgres/.gitkeep
+
+# Local raw NPPES downloads
+data/NPI_Files/

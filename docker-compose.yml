@@ -9,6 +9,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./databases/postgres:/var/lib/postgresql/data
+      - ./data:/data:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-analytics_user} -d ${POSTGRES_DB:-analytics}"]
       interval: 10s
