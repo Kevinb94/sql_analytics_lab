@@ -1,62 +1,79 @@
-# NPPES ETL Download Script
+# NPPES ETL – Monthly Download & Load
 
-This folder contains `download_nppes.py`, which downloads the NPPES monthly ZIP from CMS for the National Provider Identifier (NPI) registry (providers and their practice/location data), extracts it, and lays out files in the structure expected by the staging DML script.
+This project downloads the monthly NPPES (NPI registry) dataset from CMS, extracts it, and prepares it for staging in Postgres.
 
-## What `download_nppes.py` does
+---
 
-1. Builds the default CMS URL for the monthly NPPES ZIP:
-   - If today is the 15th or later, it targets the current month.
-   - If today is before the 15th, it targets the previous month.
-   - URL pattern: `https://download.cms.gov/nppes/NPPES_Data_Dissemination_<Month>_<Year>.zip`
-2. Downloads the ZIP in 1 MB chunks and prints progress.
-3. Saves the ZIP under `data/NPI_Files/` by default.
-4. Extracts the ZIP into:
-   - `data/NPI_Files/NPPES_Data_Dissemination_<Month>_<Year>/`
+## What the Script Does
 
-## Why this prepares data for DML
+`scripts/etl/download_nppes.py`:
 
-`sql_queries/dml/pg_load_nppes_staging.sql` scans `/data/NPI_Files` for the newest folder matching:
+1. Automatically determines the correct monthly CMS ZIP:
+   - If today is before the 15th → previous month
+   - If today is the 15th or later → current month
+2. Downloads the ZIP from:
+   `https://download.cms.gov/nppes/NPPES_Data_Dissemination_<Month>_<Year>.zip`
+3. Extracts the ZIP and organizes the raw CSVs into the canonical folders under `data/npi_files/`.
 
-- `NPPES_Data_Dissemination_*`
+---
 
-Then it auto-selects the expected CSV files inside that folder:
+## Canonical Folder Structure (Expected)
 
-- `npidata_pfile_*.csv`
-- `pl_pfile_*.csv`
-- `othername_pfile_*.csv`
-- `endpoint_pfile_*.csv`
+After running the script, your data should look like this:
 
-Because `download_nppes.py` preserves the CMS folder and filenames during extraction, the DML can locate and `COPY` those files into:
+```
+data/
+└── npi_files/
+    ├── npidata_pfile/
+    │   └── npidata_pfile_*.csv
+    ├── pl_pfile/
+    │   └── pl_pfile_*.csv
+    ├── othername_pfile/
+    │   └── othername_pfile_*.csv
+    └── endpoint_pfile/
+        └── endpoint_pfile_*.csv
+```
+
+This structure is required so the staging load script can reliably find the newest files to load.
+
+---
+
+## Tables Loaded
+
+The staging script loads data into:
 
 - `nppes.stg_nppes_npidata`
 - `nppes.stg_nppes_practice_location`
 - `nppes.stg_nppes_othername`
 - `nppes.stg_nppes_endpoint`
 
+---
+
 ## Usage
 
-Run from project root:
+Run from the project root:
 
 ```bash
 python scripts/etl/download_nppes.py
 ```
 
-Optional arguments:
+Optional:
 
 ```bash
-python scripts/etl/download_nppes.py --url "https://download.cms.gov/nppes/NPPES_Data_Dissemination_January_2026.zip"
-python scripts/etl/download_nppes.py --output-dir data/NPI_Files
+python scripts/etl/download_nppes.py --url "<custom CMS zip url>"
 ```
 
-## Typical flow
+---
 
-1. Download + extract monthly NPPES files:
+## Typical Workflow
+
+1) Download + extract + lay out canonical folders:
 
 ```bash
 python scripts/etl/download_nppes.py
 ```
 
-2. Load extracted CSVs into staging tables:
+2) Load into Postgres staging:
 
 ```bash
 docker compose exec -T postgres psql -U analytics_user -d analytics < sql_queries/dml/pg_load_nppes_staging.sql
