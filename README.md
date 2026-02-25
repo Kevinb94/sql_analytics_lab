@@ -1,93 +1,98 @@
-# SQL Analytics Practice (PostgreSQL + ClickHouse + Docker)
+# SQL Analytics Lab
 
-This project is for practicing SQL queries for analytics and writing performant queries using PostgreSQL and ClickHouse running in Docker.
+A local SQL practice environment using Docker to explore ingestion and
+analytics patterns across multiple database engines.
 
-## Project structure
+------------------------------------------------------------------------
 
-- `docker-compose.yml`: Local stack with PostgreSQL + ClickHouse + Python environment.
-- `.env`: Local environment values used by Docker Compose.
-- `databases/postgres/`: Persistent PostgreSQL data directory.
-- `databases/clickhouse/`: Persistent ClickHouse data directory.
-- `docker/python/`: Python Docker image for data loading scripts.
-- `sql_queries/ddl/`: SQL schema setup scripts.
-- `sql_queries/dql/`: Query practice scripts.
+## Databases
 
-## Prerequisites
+### PostgreSQL
 
-- Docker Desktop (or Docker Engine + Docker Compose v2)
-- Optional: VS Code + Dev Containers extension
+Schema-first staging database. - Explicit table definitions -
+`COPY`-based bulk ingestion - Strong typing and structured ETL workflows
 
-## Environment variables
+### DuckDB
 
-Copy `.env.example` to `.env` before starting services:
+Lightweight analytical engine. - Direct CSV ingestion - Schema-on-read
+exploration - Fast local analytics development
 
-```bash
-cp .env.example .env
-```
+### ClickHouse
 
-On Windows PowerShell:
+Columnar OLAP engine. - High-performance aggregations - Large analytical
+workloads - Query performance comparison
 
-```powershell
-Copy-Item .env.example .env
-```
+------------------------------------------------------------------------
 
-The root `.env` file is used by Docker Compose:
+## Dataset: CMS NPPES NPI Data
 
-```env
-POSTGRES_DB=analytics
-POSTGRES_USER=analytics_user
-POSTGRES_PASSWORD=analytics_password
-POSTGRES_PORT=5432
-CLICKHOUSE_HTTP_PORT=8123
-CLICKHOUSE_NATIVE_PORT=9000
-```
+This project uses real-world data from the **CMS National Plan &
+Provider Enumeration System (NPPES)**.
 
-You can change values as needed.
+The monthly dissemination files contain:
 
-## Run with Docker Compose
+-   Provider identifiers (NPI)
+-   Provider names
+-   Practice locations
+-   Taxonomy codes
+-   Other identifiers
+-   Endpoint information
 
-1. Start services:
+Source: https://download.cms.gov/nppes/
 
-   ```bash
-   docker compose up -d
-   ```
+Monthly file pattern:
+NPPES_Data_Dissemination\_`<Month>`{=html}\_`<Year>`{=html}.zip
 
-2. Check container health:
+Example:
+https://download.cms.gov/nppes/NPPES_Data_Dissemination_January_2026.zip
 
-   ```bash
-   docker compose ps
-   ```
+------------------------------------------------------------------------
 
-3. Connect with `psql` from your host (if installed):
+## Canonical Data Layout
 
-   ```bash
-   psql -h localhost -p 5432 -U analytics_user -d analytics
-   ```
+After download and extraction, CSV files are organized into canonical
+folders:
 
-4. Connect with ClickHouse client (if installed):
+    data/NPI_Files/
+    ├── npidata_pfile/
+    ├── pl_pfile/
+    ├── othername_pfile/
+    └── endpoint_pfile/
 
-   ```bash
-   clickhouse-client --host localhost --port 9000 --query "SELECT version()"
-   ```
+Each folder contains only its relevant CSV type (excluding
+\*\_fileheader.csv files).
 
-5. Stop services:
+This structure allows: - Clean separation of file types - Easier
+ingestion into DuckDB - Controlled `COPY` loading into PostgreSQL
+staging tables - Repeatable monthly updates
 
-   ```bash
-   docker compose down
-   ```
+------------------------------------------------------------------------
 
-## Data
+## Project Structure
 
-This repository uses real-world National Provider Identifier (NPI) data from the CMS NPPES monthly dissemination files.
+    .
+    ├── docker-compose.yml
+    ├── data/NPI_Files/
+    ├── databases/
+    │   ├── postgres/
+    │   ├── clickhouse/
+    │   └── duckdb/
+    ├── scripts/etl/
+    └── sql_queries/
+        ├── create_tables/
+        └── staging_views/
 
-- Source: CMS NPPES monthly ZIP files at `https://download.cms.gov/nppes/`
-- Monthly file pattern: `NPPES_Data_Dissemination_<Month>_<Year>.zip`
-- Example: `https://download.cms.gov/nppes/NPPES_Data_Dissemination_January_2026.zip`
+------------------------------------------------------------------------
 
-Data is requested by running the Python download script in the `python_etl` container:
+## Getting Started
 
-```bash
-docker compose run --rm python_etl python download_nppes.py
-```
+    cp .env.example .env
+    docker compose up -d
 
-The downloaded archives and extracted files are stored under `data/NPI_Files/` and then used for loading into staging/bronze tables.
+Open DuckDB:
+
+    docker compose run --rm duckdb
+
+Download NPPES data:
+
+    docker compose run --rm python_etl python download_nppes.py

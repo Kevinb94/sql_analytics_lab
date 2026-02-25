@@ -4,6 +4,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
+import shutil
 import zipfile
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
@@ -30,45 +31,27 @@ def build_default_url(now: datetime | None = None) -> str:
 
 def download_file(url: str, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Preparing download from URL: {url}")
-    print(f"Output path: {output_path}")
 
+    print(f"Downloading: {url}")
     try:
-        print("Starting HTTP request...")
         with urlopen(url) as response, output_path.open("wb") as dst:
-            content_length = response.headers.get("Content-Length")
-            total = int(content_length) if content_length else None
-            downloaded = 0
-            print("Streaming download in 1 MB chunks...")
-
             while True:
                 chunk = response.read(CHUNK_SIZE)
                 if not chunk:
                     break
-
                 dst.write(chunk)
-                downloaded += len(chunk)
 
-                if total:
-                    pct = downloaded / total * 100
-                    print(f"\rDownloaded: {downloaded:,} / {total:,} bytes ({pct:.1f}%)", end="")
-                else:
-                    print(f"\rDownloaded: {downloaded:,} bytes", end="")
-
-        print()
-        print(f"Saved file to: {output_path}")
+        print(f"Saved ZIP to: {output_path}")
     except HTTPError as exc:
-        print(f"HTTP error while downloading file: {exc.code} {exc.reason}", file=sys.stderr)
+        print(f"HTTP error: {exc.code} {exc.reason}", file=sys.stderr)
         raise
     except URLError as exc:
-        print(f"Network error while downloading file: {exc.reason}", file=sys.stderr)
+        print(f"Network error: {exc.reason}", file=sys.stderr)
         raise
 
 
 def build_output_path(output_dir: Path, url: str) -> Path:
-    filename = url.rstrip("/").split("/")[-1]
-    if not filename:
-        filename = "nppes_download.zip"
+    filename = url.rstrip("/").split("/")[-1] or "nppes_download.zip"
     return output_dir / filename
 
 
@@ -76,21 +59,59 @@ def extract_zip(zip_path: Path, extract_root: Path) -> Path:
     extract_dir = extract_root / zip_path.stem
     extract_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Extracting ZIP: {zip_path}")
-    print(f"Extract destination: {extract_dir}")
+    print(f"Extracting to: {extract_dir}")
     with zipfile.ZipFile(zip_path, "r") as zf:
         zf.extractall(extract_dir)
-        print(f"Extracted {len(zf.namelist()):,} files.")
 
     return extract_dir
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Download an NPPES monthly ZIP file.")
+def organize_extracted_files(extract_dir: Path, base_dir: Path) -> None:
+    """
+    Move CSVs into canonical folders under base_dir.
+    """
+
+    prefix_map: dict[str, str] = {
+        "endpoint_pfile_": "endpoint_pfile",
+        "npidata_pfile_": "npidata_pfile",
+        "othername_pfile_": "othername_pfile",
+        "pl_pfile_": "pl_pfile",
+    }
+
+    for p in extract_dir.iterdir():
+        if not p.is_file():
+            continue
+
+        if p.suffix.lower() != ".csv":
+            continue
+
+        dest_subfolder = None
+        for prefix, folder in prefix_map.items():
+            if p.name.startswith(prefix):
+                dest_subfolder = folder
+                break
+
+        if not dest_subfolder:
+            continue  # skip unknown CSV types
+
+        dest_dir = base_dir / dest_subfolder
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        dest_path = dest_dir / p.name
+
+        if dest_path.exists():
+            dest_path.unlink()
+
+        shutil.move(str(p), str(dest_path))
+        print(f"Moved {p.name} -> {dest_dir.name}/")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Download and organize NPPES monthly ZIP.")
     parser.add_argument(
         "--url",
         default=build_default_url(),
-        help="Direct URL to NPPES ZIP file. Defaults to current month/year.",
+        help="Direct URL to NPPES ZIP file.",
     )
     parser.add_argument(
         "--output-dir",
@@ -98,15 +119,25 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR,
         help="Directory to save the downloaded file.",
     )
-    return parser.parse_args()
 
+    args = parser.parse_args()
 
-def main() -> int:
-    args = parse_args()
     output_path = build_output_path(args.output_dir, args.url)
     download_file(args.url, output_path)
-    extract_root = args.output_dir 
-    extract_zip(output_path, extract_root)
+
+    extract_dir = extract_zip(output_path, args.output_dir)
+
+    organize_extracted_files(extract_dir, args.output_dir)
+
+    # ✅ Always delete the extracted monthly folder
+    shutil.rmtree(extract_dir)
+    print(f"Deleted temporary folder: {extract_dir}")
+
+    # Optional: also delete the ZIP to keep only canonical folders
+    output_path.unlink(missing_ok=True)
+    print(f"Deleted ZIP file: {output_path}")
+
+    print("NPPES data successfully organized into canonical folders.")
     return 0
 
 

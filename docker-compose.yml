@@ -55,5 +55,18 @@ services:
         condition: service_healthy
     command: sleep infinity
 
+  duckdb:
+    image: duckdb/duckdb:latest
+    container_name: sql-analytics-duckdb
+    working_dir: /workspace
+    command: ["duckdb", "/workspace/duckdb/local.duckdb"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./data:/workspace/data
+      - ./sql_queries:/workspace/sql_queries
+      - ./databases/duckdb:/workspace/duckdb
+
 volumes:
   clickhouse_data:
+

@@ -3,6 +3,13 @@
 .env.*
 !.env.example
 
+# DuckDB local database state
+databases/duckdb/**
+!databases/duckdb/.gitkeep
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp
+
 # Python
 __pycache__/
 *.py[cod]
