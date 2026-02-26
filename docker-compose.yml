@@ -40,7 +40,7 @@ services:
     working_dir: /workspace/scripts/etl
     volumes:
       - ./scripts/etl:/workspace/scripts/etl:rw
-      - ./sql_queries:/workspace/sql_queries:ro
+      - ./data_:/workspace/data_models:ro
       - ./data:/workspace/data:rw
     env_file:
       - .env
@@ -64,7 +64,7 @@ services:
     tty: true
     volumes:
       - ./data:/workspace/data
-      - ./sql_queries:/workspace/sql_queries
+      - ./data_models:/workspace/data_models
       - ./databases/duckdb:/workspace/duckdb
 
 volumes:
